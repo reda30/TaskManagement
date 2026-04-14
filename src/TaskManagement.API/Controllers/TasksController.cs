@@ -16,10 +16,6 @@ public class TasksController : ControllerBase
 
     public TasksController(ITaskService taskService) => _taskService = taskService;
 
-    /// <summary>
-    /// Get all tasks for the authenticated user.
-    /// Results are sorted by priority (High → Low) then by creation date (oldest first).
-    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<TaskDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
@@ -28,9 +24,7 @@ public class TasksController : ControllerBase
         return Ok(tasks);
     }
 
-    /// <summary>
-    /// Get a task by ID. Result is cached in Redis for 10 minutes.
-    /// </summary>
+   
     [HttpGet("{taskId:guid}")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -41,10 +35,7 @@ public class TasksController : ControllerBase
         return Ok(task);
     }
 
-    /// <summary>
-    /// Create a new task. Duplicate titles on the same day are rejected.
-    /// A background worker will automatically transition the task through Pending → InProgress → Done.
-    /// </summary>
+  
     [HttpPost]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -55,9 +46,6 @@ public class TasksController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { taskId = task.Id }, task);
     }
 
-    /// <summary>
-    /// Update the status of a task. This also invalidates the Redis cache for that task.
-    /// </summary>
     [HttpPatch("{taskId:guid}/status")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

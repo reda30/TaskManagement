@@ -15,7 +15,6 @@ public class AdminUsersController : ControllerBase
 
     public AdminUsersController(IUserService userService) => _userService = userService;
 
-    /// <summary>Get all registered users (Admin only).</summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<UserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
@@ -24,7 +23,6 @@ public class AdminUsersController : ControllerBase
         return Ok(users);
     }
 
-    /// <summary>Create a new user (Admin only).</summary>
     [HttpPost]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -34,7 +32,6 @@ public class AdminUsersController : ControllerBase
         return CreatedAtAction(nameof(GetAll), user);
     }
 
-    /// <summary>Soft-delete a user (Admin only).</summary>
     [HttpDelete("{userId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -5,7 +5,6 @@ using TaskManagement.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -20,17 +19,14 @@ builder.Services.AddLogging(logging =>
     logging.AddDebug();
 });
 
-// ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-// ── Seed Database ─────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
 }
 
-// ── Middleware Pipeline ───────────────────────────────────────────────────────
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
@@ -39,7 +35,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Task Management API v1");
-        c.RoutePrefix = string.Empty; // Serve Swagger at root
+        c.RoutePrefix = string.Empty;
     });
 }
 

@@ -8,9 +8,7 @@ using TaskManagement.Infrastructure.Persistence;
 
 namespace TaskManagement.Infrastructure.BackgroundJobs;
 
-/// <summary>
-/// In-memory channel that controllers/services use to enqueue task IDs for background processing.
-/// </summary>
+
 public class TaskProcessingQueue : ITaskQueueService
 {
     private readonly ConcurrentQueue<Guid> _queue = new();
@@ -20,10 +18,7 @@ public class TaskProcessingQueue : ITaskQueueService
     public bool TryDequeue(out Guid taskId) => _queue.TryDequeue(out taskId);
 }
 
-/// <summary>
-/// Hosted background service that continuously drains the queue,
-/// simulating task processing by transitioning status from Pending → InProgress → Done.
-/// </summary>
+
 public class TaskProcessingWorker : BackgroundService
 {
     private readonly TaskProcessingQueue _queue;

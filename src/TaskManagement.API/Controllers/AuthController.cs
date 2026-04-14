@@ -13,7 +13,6 @@ public class AuthController : ControllerBase
 
     public AuthController(IUserService userService) => _userService = userService;
 
-    /// <summary>Register a new user account.</summary>
     [HttpPost("register")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -23,7 +22,6 @@ public class AuthController : ControllerBase
         return CreatedAtAction(nameof(GetProfile), new { }, user);
     }
 
-    /// <summary>Log in and receive a JWT access token.</summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -33,7 +31,6 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Get the currently authenticated user's profile.</summary>
     [HttpGet("profile")]
     [Microsoft.AspNetCore.Authorization.Authorize]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]

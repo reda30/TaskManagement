@@ -55,7 +55,7 @@ public static class ServiceExtensions
                 Scheme       = "bearer",
                 BearerFormat = "JWT",
                 In           = ParameterLocation.Header,
-                Description  = "Enter your JWT token. Example: eyJhbGci..."
+                Description  = "Enter your JWT token.."
             };
 
             c.AddSecurityDefinition("Bearer", jwtScheme);
