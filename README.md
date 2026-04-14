@@ -10,15 +10,12 @@ A clean, DDD-style Task Management Backend built with **ASP.NET Core 8**, demons
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
 - [Setup & Running](#setup--running)
-  - [Option A – Docker Compose (recommended)](#option-a--docker-compose-recommended)
-  - [Option B – Local Development](#option-b--local-development)
 - [Seeded Admin Credentials](#seeded-admin-credentials)
 - [API Endpoints](#api-endpoints)
 - [Authentication Flow](#authentication-flow)
 - [Redis Caching](#redis-caching)
 - [Background Processing](#background-processing)
 - [Business Logic](#business-logic)
-- [Running Tests](#running-tests)
 - [Assumptions](#assumptions)
 
 ---
@@ -41,7 +38,7 @@ TaskManagement/
 │   │
 │   ├── TaskManagement.Application/     # Use cases, service interfaces, DTOs
 │   │   ├── Interfaces/
-│   │   │   └── IServices.cs            # ITokenService, IPasswordHasher, ICacheService, ITaskQueueService
+│   │   │   └── IServices.cs
 │   │   ├── Users/
 │   │   │   ├── DTOs/UserDtos.cs
 │   │   │   └── UserService.cs
@@ -72,24 +69,12 @@ TaskManagement/
 │       │   ├── AdminUsersController.cs
 │       │   └── TasksController.cs
 │       ├── Extensions/
-│       │   └── ServiceExtensions.cs    # JWT + Swagger registration
+│       │   └── ServiceExtensions.cs
 │       ├── Middleware/
 │       │   └── ExceptionHandlingMiddleware.cs
 │       ├── Program.cs
 │       ├── appsettings.json
 │       └── appsettings.Development.json
-│
-├── tests/
-│   └── TaskManagement.Tests/
-│       ├── Users/
-│       │   └── UserServiceTests.cs
-│       └── Tasks/
-│           ├── TaskServiceTests.cs
-│           └── EntityTests.cs
-│
-├── Dockerfile
-├── docker-compose.yml
-└── README.md
 ```
 
 ---
@@ -110,7 +95,7 @@ The solution follows **Domain-Driven Design (DDD)** with a clean layered archite
 │   Entities · Enums · Domain Exceptions · Repo Interfaces    │
 ├─────────────────────────────────────────────────────────────┤
 │                Infrastructure Layer                          │
-│   EF Core · PostgreSQL · Redis · JWT · BCrypt · Worker      │
+│   EF Core · SQL Server · Redis · JWT · BCrypt · Worker      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -128,58 +113,35 @@ The solution follows **Domain-Driven Design (DDD)** with a clean layered archite
 |-----------------------|-------------------------------------|
 | Framework             | ASP.NET Core 8                      |
 | ORM                   | Entity Framework Core 8             |
-| Database              | SQL Server 2022                       |
-| Caching               | Redis 7 via StackExchange.Redis      |
+| Database              | SQL Server                          |
+| Caching               | Redis 7 via StackExchange.Redis     |
 | Authentication        | JWT Bearer (System.IdentityModel)   |
 | Password Hashing      | BCrypt.Net-Next (work factor 12)    |
 | Background Processing | .NET `BackgroundService` (hosted)   |
 | API Documentation     | Swashbuckle / Swagger UI            |
-| Tests                 | xUnit · Moq · FluentAssertions      |
-| Containers            | Docker + Docker Compose             |
 
 ---
 
 ## Prerequisites
 
-**Option A (Docker):** Docker Desktop or Docker Engine + Docker Compose
-
-**Option B (Local):**
 - .NET 8 SDK
-- SQL Server 2019+ (or SQL Server Express / LocalDB) running locally
-- Redis 7 running locally
+- SQL Server (any edition — Express, Developer, LocalDB, or full)
+- Redis running locally
+
+> **Install Redis on Windows:** Download from https://github.com/microsoftarchive/redis/releases or run via WSL2 with `sudo service redis-server start`.
 
 ---
 
 ## Setup & Running
 
-### Option A – Docker Compose (recommended)
+**1. Configure the connection string**
 
-```bash
-# Clone the repository
-git clone <your-repo-url>
-cd TaskManagement
-
-# Start all services (API + PostgreSQL + Redis)
-docker compose up --build
-
-# The API will be available at:
-#   http://localhost:8080        (Swagger UI at root)
-```
-
-The container runs migrations and seeds the admin user automatically on first start.
-
----
-
-### Option B – Local Development
-
-**1. Configure the connection strings**
-
-Edit `src/TaskManagement.API/appsettings.Development.json`:
+Open `src/TaskManagement.API/appsettings.Development.json` and set the connection string that matches your SQL Server setup:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=TaskManagementDb;User Id=sa;Password=YourPassword@123;TrustServerCertificate=True;",
+    "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=TaskManagementDb;Trusted_Connection=True;TrustServerCertificate=True;",
     "Redis": "localhost:6379"
   },
   "JwtSettings": {
@@ -191,37 +153,38 @@ Edit `src/TaskManagement.API/appsettings.Development.json`:
 }
 ```
 
-**2. Apply EF Core migrations**
+Common connection string options depending on your setup:
 
-```bash
-cd src/TaskManagement.API
-dotnet ef database update \
-  --project ../TaskManagement.Infrastructure \
-  --startup-project .
-```
+| Setup | Connection String |
+|---|---|
+| LocalDB (Visual Studio default) | `Server=(localdb)\\MSSQLLocalDB;Database=TaskManagementDb;Trusted_Connection=True;TrustServerCertificate=True;` |
+| SQL Server Express | `Server=.\\SQLEXPRESS;Database=TaskManagementDb;Trusted_Connection=True;TrustServerCertificate=True;` |
+| SQL Server default instance | `Server=.;Database=TaskManagementDb;Trusted_Connection=True;TrustServerCertificate=True;` |
+| SQL Server with sa login | `Server=localhost,1433;Database=TaskManagementDb;User Id=sa;Password=YourPassword@123;TrustServerCertificate=True;` |
 
-> The migration file is already included. This command creates the tables.
-
-**3. Run the API**
+**2. Run the project**
 
 ```bash
 dotnet run --project src/TaskManagement.API
 ```
 
-The API starts at `https://localhost:5001` / `http://localhost:5000`.  
-Swagger UI is served at the root: `http://localhost:5000`.
+On first startup the application will:
+- Automatically apply the EF Core migration (creates the database and tables)
+- Seed the default admin user
+
+Swagger UI will be available at: `http://localhost:5000`
 
 ---
 
 ## Seeded Admin Credentials
 
-| Field    | Value                 |
-|----------|-----------------------|
-| Email    | `admin@example.com`   |
-| Password | `Admin@123`           |
-| Role     | `Admin`               |
+| Field    | Value               |
+|----------|---------------------|
+| Email    | `admin@example.com` |
+| Password | `Admin@123`         |
+| Role     | `Admin`             |
 
-The admin is created automatically on first application start via `DatabaseSeeder`. The seed is idempotent — it checks before inserting and will never create a duplicate.
+The admin is created automatically on first run. The seed is idempotent — it checks before inserting and will never create a duplicate.
 
 ---
 
@@ -229,28 +192,28 @@ The admin is created automatically on first application start via `DatabaseSeede
 
 ### Authentication
 
-| Method | Endpoint            | Auth     | Description                        |
-|--------|---------------------|----------|------------------------------------|
-| POST   | `/api/auth/register`| Public   | Register a new user                |
-| POST   | `/api/auth/login`   | Public   | Login and receive JWT + refresh    |
-| GET    | `/api/auth/profile` | JWT      | Get current user's profile         |
+| Method | Endpoint             | Auth  | Description                     |
+|--------|----------------------|-------|---------------------------------|
+| POST   | `/api/auth/register` | Public | Register a new user            |
+| POST   | `/api/auth/login`    | Public | Login and receive a JWT token  |
+| GET    | `/api/auth/profile`  | JWT   | Get current user's profile      |
 
 ### Admin – User Management *(Admin role required)*
 
-| Method | Endpoint                    | Description              |
-|--------|-----------------------------|--------------------------|
-| GET    | `/api/admin/users`          | List all users           |
-| POST   | `/api/admin/users`          | Create a new user        |
-| DELETE | `/api/admin/users/{userId}` | Soft-delete a user       |
+| Method | Endpoint                     | Description         |
+|--------|------------------------------|---------------------|
+| GET    | `/api/admin/users`           | List all users      |
+| POST   | `/api/admin/users`           | Create a new user   |
+| DELETE | `/api/admin/users/{userId}`  | Soft-delete a user  |
 
 ### Tasks *(JWT required – own tasks only)*
 
-| Method | Endpoint                         | Description                                    |
-|--------|----------------------------------|------------------------------------------------|
-| GET    | `/api/tasks`                     | List all tasks (sorted by priority → date)     |
-| GET    | `/api/tasks/{taskId}`            | Get task by ID (Redis-cached)                  |
-| POST   | `/api/tasks`                     | Create a new task                              |
-| PATCH  | `/api/tasks/{taskId}/status`     | Update task status (invalidates Redis cache)   |
+| Method | Endpoint                      | Description                                  |
+|--------|-------------------------------|----------------------------------------------|
+| GET    | `/api/tasks`                  | List all tasks (sorted by priority → date)   |
+| GET    | `/api/tasks/{taskId}`         | Get task by ID (Redis-cached)                |
+| POST   | `/api/tasks`                  | Create a new task                            |
+| PATCH  | `/api/tasks/{taskId}/status`  | Update task status (invalidates Redis cache) |
 
 ### Sample Request Bodies
 
@@ -303,97 +266,62 @@ Client                              API
 - `role` – `User` or `Admin`
 - `jti` – Unique token ID
 
-**Admin-only endpoints** are protected with `[Authorize(Roles = "Admin")]`. Regular users attempting to access them receive `403 Forbidden`.
+**Admin-only endpoints** are protected with `[Authorize(Roles = "Admin")]`. Regular users receive `403 Forbidden`.
 
 ---
 
 ## Redis Caching
 
-Redis is used to cache the result of `GET /api/tasks/{taskId}`.
+Redis caches the result of `GET /api/tasks/{taskId}`.
 
 ```
 First request (cache miss):
-  Client → API → Redis (miss) → PostgreSQL → Redis.SET(key, dto, 10min) → Client
+  Client → API → Redis (miss) → SQL Server → Redis.SET(key, data, 10min) → Client
 
 Subsequent requests (cache hit):
   Client → API → Redis (hit) → Client   ← no DB query
 
 After status update:
-  Client → PATCH /api/tasks/{id}/status → PostgreSQL.UPDATE → Redis.DEL(key) → Client
+  Client → PATCH /api/tasks/{id}/status → SQL Server UPDATE → Redis.DEL(key) → Client
 ```
 
-- **Cache key format:** `TaskMgmt:task:{taskId}`
-- **TTL:** 10 minutes (absolute expiration)
-- **Invalidation:** Explicit key deletion on every status update
+- **Cache key:** `TaskMgmt:task:{taskId}`
+- **TTL:** 10 minutes
+- **Invalidation:** Cache key is deleted on every status update
 
 ---
 
 ## Background Processing
 
-When a task is created it is immediately saved to the database and its ID is pushed into an **in-memory `ConcurrentQueue<Guid>`** (the `TaskProcessingQueue` singleton).
-
-A `BackgroundService` (`TaskProcessingWorker`) continuously drains the queue and simulates processing:
+When a task is created, its ID is pushed into an in-memory queue. A `BackgroundService` running alongside the API continuously drains the queue and simulates processing:
 
 ```
-Task created (status = Pending)
-        │
-        ▼  ~2 seconds
-Task status → InProgress  (saved to DB)
-        │
-        ▼  ~3 seconds
-Task status → Done        (saved to DB)
+POST /api/tasks → Task saved (Pending) → ID pushed to queue → response returns to user
+
+Background (separate thread):
+  ~2 seconds → status updated to InProgress
+  ~3 seconds → status updated to Done
 ```
 
-This happens entirely in the background — the `POST /api/tasks` response returns immediately after the task is persisted with status `Pending`. You can observe the transitions by polling `GET /api/tasks/{taskId}` (note that Redis caches the first read; use `PATCH` to reset the cache, or wait for the TTL).
-
-A simple `.NET BackgroundService` was chosen as required. External brokers (RabbitMQ, Azure Service Bus) would be used in production for durability and scalability.
+The HTTP response returns immediately — the status transitions happen asynchronously. You can watch them by calling `GET /api/tasks/{taskId}` a few seconds after creation.
 
 ---
 
 ## Business Logic
 
-Two pieces of business logic are implemented in the `TaskService`:
-
 **1. Duplicate task prevention**
-> A user cannot create two tasks with the same title on the same calendar day (UTC).
-
-```csharp
-var isDuplicate = await _taskRepository.ExistsTodayAsync(userId, request.Title, ct);
-if (isDuplicate) throw new DuplicateTaskException(request.Title);
-```
-
-Returns `409 Conflict` with a descriptive message.
+A user cannot create two tasks with the same title on the same day. Returns `409 Conflict`.
 
 **2. Priority-first sorting**
-> `GET /api/tasks` always returns tasks ordered by priority descending (High → Medium → Low), then by creation date ascending within the same priority.
-
-```csharp
-tasks.OrderByDescending(t => (int)t.Priority).ThenBy(t => t.CreatedAt)
-```
-
----
-
-## Running Tests
-
-```bash
-dotnet test tests/TaskManagement.Tests
-```
-
-Tests cover:
-- `UserService` – Register, Login, GetProfile (happy path + all failure paths)
-- `TaskService` – Create, GetById (cache miss/hit), GetAll (sort order), UpdateStatus
-- Domain entities – `TaskItem` and `User` creation and mutation
-
-All tests use **Moq** for dependency mocking and **FluentAssertions** for readable assertions. No database or Redis instance is required to run them.
+`GET /api/tasks` returns tasks sorted by priority descending (High → Medium → Low), then by creation date ascending within the same priority level.
 
 ---
 
 ## Assumptions
 
-1. **Refresh tokens** are generated and returned in the login response but not stored server-side (no refresh-token rotation endpoint). In a production system, refresh tokens would be persisted and validated.
-2. **Task deletion** is not required by the spec and was not implemented. Tasks belong to users and are cascade-deleted when a user is hard-deleted (soft-delete is used instead, so tasks remain).
-3. **Admin tasks** – the admin user can only manage *users*, not tasks. Task ownership remains per-user.
-4. **Soft delete** is applied to users. The EF global query filter (`HasQueryFilter(u => !u.IsDeleted)`) automatically excludes soft-deleted users from all queries.
-5. **Timestamps** are stored and compared in **UTC**.
-6. **Migrations** are applied automatically at startup via `_context.Database.MigrateAsync()` in `DatabaseSeeder`.
-7. The **JWT secret** in `appsettings.json` is a placeholder. In production it should be injected via environment variables or a secrets manager (Azure Key Vault, AWS Secrets Manager, etc.).
+1. **Refresh tokens** are generated and returned in the login response but not stored server-side. In production they would be persisted and validated.
+2. **Task deletion** was not implemented as it is not in the spec. Tasks are cascade-deleted only when their owner user is permanently removed.
+3. **Admin tasks** — the admin can only manage users, not tasks. Task ownership is always per-user.
+4. **Soft delete** is applied to users via an `IsDeleted` flag. A global EF query filter automatically excludes soft-deleted users from all queries.
+5. **Timestamps** are stored and compared in UTC.
+6. The **JWT secret** in `appsettings.json` is a placeholder and should be replaced with a strong secret stored in environment variables or a secrets manager in production.
